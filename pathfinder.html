@@ -1,0 +1,272 @@
+<html>
+<head>
+<style>
+</style>
+</head>
+<body>
+<!-- ================================================= -->
+<center>
+PATHFINDER
+<pre id="tag_board"></pre>
+</center>
+<pre id="tag_log"></pre>
+<script>
+
+// to log on the page
+function log(text) {
+	var tag_log = document.getElementById("tag_log");
+	tag_log.innerHTML += text + "\n";
+}//end function
+
+// generate a new square
+function new_square(row,col,val,state) {
+	var square = {"row":row, "col":col, "val":val, "state":state};
+	return square;
+}//end function
+
+// generate a new board
+function new_board(rows,cols) {
+	var board = [];
+	var row,col;
+	var square;
+	for (row=0;row<rows;row++) {
+		var newrow = [];
+		board.push(newrow);
+		for (col=0;col<cols;col++) {
+			var newsquare = new_square(row,col,999999,"TOVISIT");
+			newrow.push(newsquare);
+		}//end for
+	}//end for
+	return board;
+}//end function
+
+// random number in [a,b]
+function random(a,b) {
+	return Math.floor(Math.random()*(b-a+1)) + a;
+}//end function
+
+// add wall on board
+function add_wall(board) {
+	var r1 = random(1,rows-2);
+	var r2 = random(1,rows-2);
+	var c1 = random(1,cols-2);
+	var c2 = random(1,cols-2);
+	var row;
+	var col;
+	col = c1;
+	for (row=r1;row<=r2;row++) {
+		board[row][col].state = "WALL";
+		board[row][col].val   = 999999;
+	}//end for
+	row = r1;
+	for (col=c1;col<=c2;col++) {
+		board[row][col].state = "WALL";
+		board[row][col].val   = 999999;
+	}//end for
+}//end function
+
+// add initial and final points to the board
+function add_endpoints(board) {
+	initial_row = random(0,rows-1);
+	initial_col = random(0,cols-1);
+	final_row   = random(0,rows-1);
+	final_col   = random(0,cols-1);
+	var square;
+	square = board[initial_row][initial_col];
+	square.val   = 0;
+	square.state = "INITIAL";
+	square = board[final_row][final_col];
+	square.val   = 999999;
+	square.state = "FINAL";
+}//end function
+
+// get HTML from a square
+function get_html_square(square) {
+	var html = "";
+	var style = "";
+	style += "width : 65;"
+	if (square.state == "INITIAL") style += "background-color: lime;";
+	if (square.state == "FINAL"  ) style += "background-color: lime;";
+	if (square.state == "VISITED") style += "background-color: grey;";
+	if (square.state == "VISITED") {
+		var hex = Number(50 + square.val*2);
+		if (hex >= 235) {hex = 235;}
+		if (hex <=  50) {hex =  50;}
+		hex = "" + hex.toString(16);
+		if (hex.length == 1) hex = "0" + hex;
+		style += "background-color: #" + hex + hex + hex + ";";
+	}
+	if (square.state == "TOVISIT") style += "background-color: white;";
+	if (square.state == "WALL"   ) style += "background-color: purple;";
+	if (square.state == "PATH"   ) style += "background-color: green;";
+	html += "<pre style=\"" + style + "\" >";
+	html += square.row + "," + square.col + "\n" + square.val + "\n" + square.state;
+	html += "</pre>";
+	return html;
+}//end function
+
+// get HTML from a board
+function get_html_board(board) {
+	var html = "";
+	html += "<table border=1>";
+	for (row=0;row<rows;row++) {
+		html += "<tr>";
+		for (col=0;col<cols;col++) {
+		html += "<td>";
+		html += get_html_square(board[row][col]);
+		html += "</td>";
+		}//end for
+		html += "</tr>";
+	}//end for
+	html += "</table>";
+	return html;
+}//end function
+
+// display board on screen
+function display() {
+	var tag_board = document.getElementById("tag_board");
+	tag_board.innerHTML = get_html_board(board);
+}//end function
+
+////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+// main method that create the possible paths step by step
+function search() {
+	found = false;
+	step  = 0;
+	while(found == false) {
+		var row = 0;
+		var col = 0;
+		for (row=0;row<rows;row++) {
+			for (col=0;col<cols;col++) {
+				//extend area from this square
+				var s = board[row][col];
+				if (s.val == step) {
+					explore_from(row,col);
+				}//end if
+			}//end for
+		}//end for
+		display();
+		step++;
+	}//end while
+}//end function
+
+function explore_from(row,col) {
+	var s = board[row][col];
+	explore_square(row  ,col-1);
+	explore_square(row  ,col+1);
+	explore_square(row-1,col  );
+	explore_square(row+1,col  );
+}//end function
+
+function valid_row_col(row,col) {
+	if (row<0 || col<0 || row>=rows || col>=cols) return false;
+	return true;
+}//end function
+
+function explore_square(row,col) {
+	if (valid_row_col(row,col) == false) return;
+	var s = board[row][col];
+	if (s.state == "FINAL") {
+		s.val = step + 1;
+		found = true;
+		return;
+	}//end if
+	if (s.val != 999999 || s.state != "TOVISIT") return;
+	s.val   = step + 1;
+	s.state = "VISITED";
+}//end function
+
+// create a solution from the built paths
+function make_solution() {
+	solution = [];
+	var row = final_row;
+	var col = final_col;
+	var s   = board[row][col];
+	step = s.val;
+	solution.push(s);
+	log(s.row+","+s.col+" "+s.val);
+	while(step > 1) {
+		step--;
+		if (valid_row_col(row,col-1) && board[row][col-1].val == step) {
+			s = board[row][col-1];
+		}//end if
+		else if (valid_row_col(row,col+1) && board[row][col+1].val == step) {
+			s = board[row][col+1];
+		}//end else if
+		else if (valid_row_col(row-1,col) && board[row-1][col].val == step) {
+			s = board[row-1][col];
+		}//end else if
+		else if (valid_row_col(row+1,col) && board[row+1][col].val == step) {
+			s = board[row+1][col];
+		}//end else if
+		s.state = "PATH";
+		row = s.row;
+		col = s.col;
+		solution.push(s);
+		log(s.row+","+s.col+" "+s.val);
+	}//end while
+	s = board[initial_row][initial_col];
+	solution.push(s);
+	log(s.row+","+s.col+" "+s.val);
+	solution.reverse();
+	display();
+}//end function
+////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+////////////////////////////
+// INITIALIZATION
+////////////////////////////
+var rows  = 12;
+var cols  = 12;
+var step  = 0;
+var found = false;
+var initial_row;
+var initial_col;
+var final_row  ;
+var final_col  ;
+var solution = [];
+////////////////////////////
+// MAIN LOGIC
+////////////////////////////
+var board = new_board(rows,cols);
+add_wall(board);
+add_wall(board);
+add_wall(board);
+add_wall(board);
+add_wall(board);
+add_wall(board);
+add_wall(board);
+add_wall(board);
+add_wall(board);
+add_wall(board);
+add_wall(board);
+add_wall(board);
+add_endpoints(board);
+display();
+search();
+make_solution();
+////////////////////////////
+/*
+ROWS   : 0-X
+COLS   : 0-X
+VAL    : 0,1,2,3,4,5,...999999
+STATES : INITIAL
+         FINAL
+         WALL
+         VISITED
+         TOVISIT
+         PATH     (afterwards)
+*/
+</script>
+<!-- ================================================= -->
+</body>
+</html>
