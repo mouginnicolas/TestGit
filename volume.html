@@ -1,0 +1,48 @@
+<hr>
+<pre id="text"></pre>
+<hr>
+
+<script>
+/////////////////////
+// initialisations
+/////////////////////
+var n         = 30;//number of cycles
+var v_initial = 48;//initial volume of a glass
+var v_spoon   =  2;//volume of a spoon
+var c1        =  1;//concentration coffee glass 1
+var c2        =  0;//concentration coffee glass 2
+var v1        = 48;//volume glass 1
+var v2        = 48;//volume glass 2
+var i         =  0; // cycle number
+
+function print() {
+	var text = "";
+	text += i + "," + c1 + "," + c2;
+	document.getElementById("text").innerHTML += text + "\n";
+}//end function
+
+function transfert_2_to_1() {
+	c1 = (c1*(v1) + c2*(v_spoon)) / (v1 + v_spoon);//
+	v1 = v1 + v_spoon;
+	v2 = v2 - v_spoon;
+}//end function
+
+function transfert_1_to_2() {
+	c2 = (c2*(v2) + c1*(v_spoon)) / (v2 + v_spoon);
+	v2 = v2 + v_spoon;
+	v1 = v1 - v_spoon;
+}//end function
+
+function execute(n) {
+	print();
+	for (i=1; i<=n; i++) {
+	transfert_2_to_1();
+	//print();
+	transfert_1_to_2();
+	print();
+	}//end for
+}//end function
+execute(n);
+
+</script>
+
