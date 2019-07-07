@@ -1,0 +1,198 @@
+<html>
+<head>
+<style>
+textarea {
+	overflow-y: scroll;
+}
+</style>
+<script>
+var canvas;
+var context;
+var CANVAS_WIDTH;
+var CANVAS_HEIGHT;
+var t;
+var tmax;
+var dt;
+var pausedt;
+var interval;
+var simulate = true;
+var particles = [];
+function log(text) {
+	document.getElementById("logs").value += text + "\n";
+}//end function
+function new_particle() {
+	var p = {
+		px:0, py:0, //position
+		sx:0, sy:0, //speed
+		ax:0, ay:0, //acceleration
+	}
+	return p;
+}//end function
+
+function initialize() {
+	CANVAS_WIDTH  = Number(document.getElementById("CANVAS_WIDTH" ).value);
+	CANVAS_HEIGHT = Number(document.getElementById("CANVAS_HEIGHT").value);
+	canvas        = document.getElementById("canvas");
+	context       = canvas.getContext("2d");
+	canvas.setAttribute('width' , CANVAS_WIDTH );
+	canvas.setAttribute('height', CANVAS_HEIGHT);
+	dt      = Number(document.getElementById("dt"       ).value);
+	pausedt = Number(document.getElementById("pausedt"  ).value);
+	particles = [];
+	canvas.onclick = function(event){
+		var rect = canvas.getBoundingClientRect();
+		var px = event.pageX - rect.left;
+		var py = event.pageY - rect.top;
+		log(px + " " + py);
+		simulation_add_particle_via_mouse(px,py);
+	}//end function
+}//end function
+
+async function sleep(msec) {
+    return new Promise(resolve => setTimeout(resolve, msec));
+}//end function
+
+function simulation_add_particle_via_mouse(px,py) {
+	log("simulation_add_particle " + (particles.length+1));
+	log(px + " " + py);
+	var p = new_particle();
+	p.px = px;
+	p.py = py;
+	M = 50;
+	p.sx = Math.random() * M - M/2.;
+	p.sy = Math.random() * M - M/2.;
+	p.ax = 0;
+	p.ay = 0;
+	particles.push(p);
+}//end function
+function simulation_add_particle() {
+	log("simulation_add_particle " + (particles.length+1));
+	var p = new_particle();
+	M = 50;
+	p.px = Math.random() * CANVAS_WIDTH;
+	p.py = Math.random() * CANVAS_HEIGHT;
+	p.sx = Math.random() * M - M/2.;
+	p.sy = Math.random() * M - M/2.;
+	p.ax = 0;
+	p.ay = 0;
+	particles.push(p);
+}//end function
+
+function simulation_clearpaths() {
+	log("simulation_clearpaths");
+	context.clearRect(0, 0, canvas.width, canvas.height);
+}//end function
+
+
+function clicked(event) {
+	alert("clicked " + event.clientX + " " + event.clientY);
+	/*
+    var rect = canvas.getBoundingClientRect();
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    };
+	*/
+}//end function
+
+async function simulation_stop() {
+	log("simulation_stop");
+	simulate  = false;
+}//end function
+
+async function simulation() {
+	log("simulation_start");
+	simulate = true;
+
+	while (simulate) {
+
+		//resets accelerations
+		for (i=0; i<particles.length;i++) {
+			particles[i].ax = 0;
+			particles[i].ay = 0;
+		}//end for
+
+		//for each couple i,j calculate forces then accelerations
+		for (i=0; i<particles.length-1;i++) {
+			var a = particles[i];
+			for (j=i+1; j<particles.length;j++) {
+				var b = particles[j];
+				//force type gravity : attracrive in 1 / r**2
+				vabx = b.px - a.px; // vect x
+				vaby = b.py - a.py; // vect y
+				ab  = (vabx ** 2 + vaby ** 2) ** 0.5;// dist
+				fab = 10000. / (ab**2); // model for gravity force
+				if (fab > 10) {fab = 10;} // limit force (always positive)
+				fabx = fab * (vabx / ab); // force on a on x
+				faby = fab * (vaby / ab); // force on a on y
+				//accelerations
+				a.ax +=   fabx;
+				a.ay +=   faby;
+				b.ax += - fabx;
+				b.ay += - faby;
+			}//end for
+		}//end for
+
+		//for each particle, calculate speeds then positions
+		for (i=0; i<particles.length;i++) {
+			var p = particles[i];
+			//speeds
+			p.sx += p.ax * dt;
+			p.sy += p.ay * dt;
+			//added viscosity
+			p.sx *= 0.999;
+			p.sy *= 0.999;
+			// positions
+			p.px += p.sx * dt;
+			p.py += p.sy * dt;
+			//positions : boundary conditions
+			p.px = (p.px + 10 * CANVAS_WIDTH ) % CANVAS_WIDTH;
+			p.py = (p.py + 10 * CANVAS_HEIGHT) % CANVAS_HEIGHT;
+		}//end for
+
+		//for each particle, draw it
+		for (i=0; i<particles.length;i++) {
+			var p = particles[i];
+			context.fillRect(p.px,p.py,1,1);
+			context.stroke();
+		}//end for
+
+		await sleep(pausedt*1000);
+
+	}//end while
+
+}//end function
+</script>
+</head>
+
+<body>
+<table>
+<tr>
+<td>
+<pre>
+===== SETUP/BUTTONS
+<input type="text"   value="600"   id="CANVAS_WIDTH"  />CANVAS_WIDTH  (LX);
+<input type="text"   value="400"   id="CANVAS_HEIGHT" />CANVAS_HEIGHT (LY);
+<input type="text"   value="0.01"  id="dt"            />dt;
+<input type="text"   value="0.001" id="pausedt"       />pausedt;
+<input type="button" value="initialize"              onclick="initialize();"              />
+<input type="button" value="simulation_start"        onclick="simulation();"              />
+<input type="button" value="simulation_add_particle" onclick="simulation_add_particle();" />
+<input type="button" value="simulation_clearpaths"   onclick="simulation_clearpaths();"   />
+<input type="button" value="simulation_stop"         onclick="simulation_stop();"         />
+</pre>
+</td>
+<td>
+<pre>
+===== LOGS
+<textarea id="logs" rows="10" cols="50"></textarea>
+</pre>
+</td>
+</tr>
+</table>
+===== GRAPH
+<pre>
+<canvas id="canvas" style="border:1px solid #000000;"></canvas>
+</pre>
+</body>
+</html>
